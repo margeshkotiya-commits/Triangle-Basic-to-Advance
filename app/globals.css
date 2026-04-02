@@ -1,0 +1,14 @@
+@import "tailwindcss";
+@import "katex/dist/katex.min.css";
+
+@theme {
+  --color-deep-blue: #0b2c5f;
+  --color-golden-yellow: #f4c430;
+  --color-white: #ffffff;
+}
+
+body {
+  background-color: var(--color-deep-blue);
+  color: var(--color-white);
+  overflow: hidden;
+}
