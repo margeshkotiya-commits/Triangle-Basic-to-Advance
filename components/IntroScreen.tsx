@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef } from "react";
 import { motion } from "motion/react";
+import Image from "next/image";
 
 interface IntroScreenProps {
   onStart: () => void;
@@ -102,11 +103,15 @@ export function IntroScreen({ onStart }: IntroScreenProps) {
         transition={{ duration: 1, delay: 0.2 }}
         className="absolute top-8 left-1/2 -translate-x-1/2 flex flex-col items-center"
       >
-        <img 
-          src="https://i.postimg.cc/vmPQhdZC/SEZ_1_(1).png" 
-          alt="Shreeji Education Zone" 
-          className="h-28 md:h-32 object-contain"
-        />
+        <div className="relative h-28 md:h-32 w-64">
+          <Image 
+            src="https://i.postimg.cc/vmPQhdZC/SEZ_1_(1).png" 
+            alt="Shreeji Education Zone" 
+            fill
+            className="object-contain"
+            referrerPolicy="no-referrer"
+          />
+        </div>
       </motion.div>
 
       {/* Main Content */}
