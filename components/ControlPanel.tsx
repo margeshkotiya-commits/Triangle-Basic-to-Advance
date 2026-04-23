@@ -255,7 +255,7 @@ export default function ControlPanel({ points, mode, setMode, selectedAngle, set
         >
           <option value="m">m</option>
           <option value="cm">cm</option>
-          <option value="mm">mm</option>
+          <option value="units">units</option>
         </select>
       </div>
 

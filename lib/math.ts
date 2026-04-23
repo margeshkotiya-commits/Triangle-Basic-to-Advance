@@ -80,27 +80,44 @@ export const getSideLabelPosition = (p1: Point, p2: Point, p3: Point, offset: nu
   const v = { x: p2.x - p1.x, y: p2.y - p1.y };
   const len = Math.sqrt(v.x ** 2 + v.y ** 2);
   
-  if (len === 0) return mid;
+  if (len === 0) return { x: mid.x, y: mid.y, angle: 0 };
 
-  // Normal vector
+  // Perpendicular vector
   let nx = -v.y / len;
   let ny = v.x / len;
 
-  // Vector from p1 to p3
-  const v3 = { x: p3.x - p1.x, y: p3.y - p1.y };
+  // Find triangle centroid
+  const centroid = {
+    x: (p1.x + p2.x + p3.x) / 3,
+    y: (p1.y + p2.y + p3.y) / 3
+  };
 
-  // Dot product to check direction
-  const dot = nx * v3.x + ny * v3.y;
+  // Determine correct direction
+  const vectorToCentroid = {
+    x: centroid.x - mid.x,
+    y: centroid.y - mid.y
+  };
 
-  // If dot > 0, normal points towards p3 (inward). We want outward, so flip it.
+  const dot = nx * vectorToCentroid.x + ny * vectorToCentroid.y;
+
+  // If dot > 0, normal points towards centroid (inward). We want outward, so flip it.
   if (dot > 0) {
     nx = -nx;
     ny = -ny;
   }
 
+  // Rotation angle
+  let angle = Math.atan2(v.y, v.x) * (180 / Math.PI);
+  
+  // Keep text upright
+  if (angle > 90 || angle <= -90) {
+    angle += 180;
+  }
+
   return {
     x: mid.x + nx * offset,
     y: mid.y + ny * offset,
+    angle
   };
 };
 

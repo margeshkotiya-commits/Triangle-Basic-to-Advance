@@ -59,12 +59,82 @@ export default function TriangleSVG({ points, onPointChange, mode, selectedAngle
   const dispC = showSimplifiedValues ? cDisplay : c;
   const dispUnit = showSimplifiedValues ? 'units' : unit;
 
-  // Side label positions
-  const posSideA = getSideLabelPosition(B, C, A, 25);
-  const posSideB = getSideLabelPosition(A, C, B, 25);
-  const posSideC = getSideLabelPosition(A, B, C, 25);
+  // Adaptive offset for side labels
+  const avgSide = (a + b + c) / 3;
+  const offsetDistance = Math.max(15, Math.min(30, avgSide * 0.2));
 
-  // Angle label positions
+  // Determine side label positions
+  const rawPosSideA = getSideLabelPosition(B, C, A, offsetDistance);
+  const rawPosSideB = getSideLabelPosition(A, C, B, offsetDistance);
+  const rawPosSideC = getSideLabelPosition(A, B, C, offsetDistance);
+
+  // Boundary clamping to prevent label cutting (padding 12px)
+  const clampLabel = (pos: { x: number, y: number, angle: number }) => ({
+    x: Math.max(12, Math.min(488, pos.x)),
+    y: Math.max(12, Math.min(388, pos.y)),
+    angle: pos.angle,
+  });
+
+  const targetPosSideA = clampLabel(rawPosSideA);
+  const targetPosSideB = clampLabel(rawPosSideB);
+  const targetPosSideC = clampLabel(rawPosSideC);
+
+  // Smooth interpolation for values and positions
+  const targets = {
+    dispA, dispB, dispC,
+    posSideA: targetPosSideA, posSideB: targetPosSideB, posSideC: targetPosSideC
+  };
+  
+  const targetsRef = React.useRef(targets);
+  const currentRef = React.useRef(targets);
+  const [animState, setAnimState] = useState(targets);
+
+  React.useEffect(() => {
+    targetsRef.current = {
+      dispA, dispB, dispC,
+      posSideA: targetPosSideA, posSideB: targetPosSideB, posSideC: targetPosSideC
+    };
+  }, [dispA, dispB, dispC, targetPosSideA, targetPosSideB, targetPosSideC]);
+
+  React.useEffect(() => {
+    let frameId: number;
+    const loop = () => {
+      let needsUpdate = false;
+      const curr = currentRef.current;
+      const target = targetsRef.current;
+
+      const lerp = (c: number, t: number) => {
+        const diff = t - c;
+        if (Math.abs(diff) < 0.01) return t;
+        needsUpdate = true;
+        return c + diff * 0.15;
+      };
+
+      curr.dispA = lerp(curr.dispA, target.dispA);
+      curr.dispB = lerp(curr.dispB, target.dispB);
+      curr.dispC = lerp(curr.dispC, target.dispC);
+
+      curr.posSideA.x = lerp(curr.posSideA.x, target.posSideA.x);
+      curr.posSideA.y = lerp(curr.posSideA.y, target.posSideA.y);
+      curr.posSideB.x = lerp(curr.posSideB.x, target.posSideB.x);
+      curr.posSideB.y = lerp(curr.posSideB.y, target.posSideB.y);
+      curr.posSideC.x = lerp(curr.posSideC.x, target.posSideC.x);
+      curr.posSideC.y = lerp(curr.posSideC.y, target.posSideC.y);
+
+      // Handle angle rotation instantly or nicely without wrapping issues
+      curr.posSideA.angle = target.posSideA.angle;
+      curr.posSideB.angle = target.posSideB.angle;
+      curr.posSideC.angle = target.posSideC.angle;
+
+      if (needsUpdate) {
+        setAnimState({ ...curr });
+      }
+      frameId = requestAnimationFrame(loop);
+    };
+    frameId = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(frameId);
+  }, []);
+
   const posA = getAngleLabelPosition(A, B, C, 45);
   const posB = getAngleLabelPosition(B, A, C, 45);
   const posC = getAngleLabelPosition(C, A, B, 45);
@@ -162,55 +232,58 @@ export default function TriangleSVG({ points, onPointChange, mode, selectedAngle
           onClick={() => handleSelect('C')}
         />
 
-        {/* Side Labels */}
-        <foreignObject x={posSideA.x} y={posSideA.y} width="1" height="1" className="overflow-visible">
+        {/* Angle Labels (rendered before side labels so sides can be above if needed, but really vertices are on top) */}
+        <foreignObject x={posA.x} y={posA.y} width="1" height="1" className="overflow-visible pointer-events-none">
           <div
-            className={`absolute -translate-x-1/2 -translate-y-1/2 bg-blue-800 text-yellow-300 px-2 py-1 rounded-lg shadow cursor-pointer select-none whitespace-nowrap text-xs md:text-sm font-bold transition-all duration-300 ease-in-out ${(isSineMode && selectedAngle === 'A') || (isCosineMode && (selectedAngle === 'B' || selectedAngle === 'C')) ? 'scale-110 shadow-[0_0_10px_rgba(244,196,48,0.8)]' : 'opacity-80'}`}
-            onClick={() => handleSelect('A')}
-          >
-            a = {dispA.toFixed(1).replace(/\.0$/, '')} {dispUnit}
-          </div>
-        </foreignObject>
-        <foreignObject x={posSideB.x} y={posSideB.y} width="1" height="1" className="overflow-visible">
-          <div
-            className={`absolute -translate-x-1/2 -translate-y-1/2 bg-blue-800 text-yellow-300 px-2 py-1 rounded-lg shadow cursor-pointer select-none whitespace-nowrap text-xs md:text-sm font-bold transition-all duration-300 ease-in-out ${(isSineMode && selectedAngle === 'B') || (isCosineMode && (selectedAngle === 'A' || selectedAngle === 'C')) ? 'scale-110 shadow-[0_0_10px_rgba(244,196,48,0.8)]' : 'opacity-80'}`}
-            onClick={() => handleSelect('B')}
-          >
-            b = {dispB.toFixed(1).replace(/\.0$/, '')} {dispUnit}
-          </div>
-        </foreignObject>
-        <foreignObject x={posSideC.x} y={posSideC.y} width="1" height="1" className="overflow-visible">
-          <div
-            className={`absolute -translate-x-1/2 -translate-y-1/2 bg-blue-800 text-yellow-300 px-2 py-1 rounded-lg shadow cursor-pointer select-none whitespace-nowrap text-xs md:text-sm font-bold transition-all duration-300 ease-in-out ${(isSineMode && selectedAngle === 'C') || (isCosineMode && (selectedAngle === 'A' || selectedAngle === 'B')) ? 'scale-110 shadow-[0_0_10px_rgba(244,196,48,0.8)]' : 'opacity-80'}`}
-            onClick={() => handleSelect('C')}
-          >
-            c = {dispC.toFixed(1).replace(/\.0$/, '')} {dispUnit}
-          </div>
-        </foreignObject>
-
-        {/* Angle Labels */}
-        <foreignObject x={posA.x} y={posA.y} width="1" height="1" className="overflow-visible">
-          <div
-            className={`absolute -translate-x-1/2 -translate-y-1/2 bg-blue-800 text-yellow-300 px-2 py-1 rounded-lg shadow cursor-pointer select-none whitespace-nowrap text-xs md:text-sm font-bold transition-all duration-300 ease-in-out ${selectedAngle === 'A' && (isSineMode || isCosineMode) ? 'scale-110 shadow-[0_0_10px_rgba(244,196,48,0.8)]' : 'opacity-80'}`}
+            className={`absolute -translate-x-1/2 -translate-y-1/2 bg-blue-800/90 text-yellow-300 px-2 py-1 rounded-lg shadow-md cursor-pointer select-none pointer-events-auto whitespace-nowrap text-xs md:text-sm font-bold transition-all duration-300 ease-in-out ${selectedAngle === 'A' && (isSineMode || isCosineMode) ? 'scale-110 shadow-[0_0_10px_rgba(244,196,48,0.8)]' : 'opacity-80'}`}
             onClick={() => handleSelect('A')}
           >
             {angleA.toFixed(1)}°
           </div>
         </foreignObject>
-        <foreignObject x={posB.x} y={posB.y} width="1" height="1" className="overflow-visible">
+        <foreignObject x={posB.x} y={posB.y} width="1" height="1" className="overflow-visible pointer-events-none">
           <div
-            className={`absolute -translate-x-1/2 -translate-y-1/2 bg-blue-800 text-yellow-300 px-2 py-1 rounded-lg shadow cursor-pointer select-none whitespace-nowrap text-xs md:text-sm font-bold transition-all duration-300 ease-in-out ${selectedAngle === 'B' && (isSineMode || isCosineMode) ? 'scale-110 shadow-[0_0_10px_rgba(244,196,48,0.8)]' : 'opacity-80'}`}
+            className={`absolute -translate-x-1/2 -translate-y-1/2 bg-blue-800/90 text-yellow-300 px-2 py-1 rounded-lg shadow-md cursor-pointer select-none pointer-events-auto whitespace-nowrap text-xs md:text-sm font-bold transition-all duration-300 ease-in-out ${selectedAngle === 'B' && (isSineMode || isCosineMode) ? 'scale-110 shadow-[0_0_10px_rgba(244,196,48,0.8)]' : 'opacity-80'}`}
             onClick={() => handleSelect('B')}
           >
             {angleB.toFixed(1)}°
           </div>
         </foreignObject>
-        <foreignObject x={posC.x} y={posC.y} width="1" height="1" className="overflow-visible">
+        <foreignObject x={posC.x} y={posC.y} width="1" height="1" className="overflow-visible pointer-events-none">
           <div
-            className={`absolute -translate-x-1/2 -translate-y-1/2 bg-blue-800 text-yellow-300 px-2 py-1 rounded-lg shadow cursor-pointer select-none whitespace-nowrap text-xs md:text-sm font-bold transition-all duration-300 ease-in-out ${selectedAngle === 'C' && (isSineMode || isCosineMode) ? 'scale-110 shadow-[0_0_10px_rgba(244,196,48,0.8)]' : 'opacity-80'}`}
+            className={`absolute -translate-x-1/2 -translate-y-1/2 bg-blue-800/90 text-yellow-300 px-2 py-1 rounded-lg shadow-md cursor-pointer select-none pointer-events-auto whitespace-nowrap text-xs md:text-sm font-bold transition-all duration-300 ease-in-out ${selectedAngle === 'C' && (isSineMode || isCosineMode) ? 'scale-110 shadow-[0_0_10px_rgba(244,196,48,0.8)]' : 'opacity-80'}`}
             onClick={() => handleSelect('C')}
           >
             {angleC.toFixed(1)}°
+          </div>
+        </foreignObject>
+
+        {/* Side Labels (Top Layer for absolute clarity) */}
+        <foreignObject x={animState.posSideA.x} y={animState.posSideA.y} width="1" height="1" className="overflow-visible pointer-events-none">
+          <div
+            className={`absolute bg-blue-900/95 text-white px-2 py-1 rounded-md shadow-md cursor-pointer pointer-events-auto select-none whitespace-nowrap text-xs md:text-sm font-bold transition-all duration-300 ease-in-out ${(isSineMode && selectedAngle === 'A') || (isCosineMode && (selectedAngle === 'B' || selectedAngle === 'C')) ? 'scale-110 shadow-[0_0_10px_rgba(244,196,48,1)]' : 'opacity-100'}`}
+            style={{ transform: `translate(-50%, -50%) rotate(${animState.posSideA.angle}deg)` }}
+            onClick={() => handleSelect('A')}
+          >
+            BC = {Math.round(animState.dispA * 10) / 10} {dispUnit}
+          </div>
+        </foreignObject>
+        <foreignObject x={animState.posSideB.x} y={animState.posSideB.y} width="1" height="1" className="overflow-visible pointer-events-none">
+          <div
+            className={`absolute bg-blue-900/95 text-white px-2 py-1 rounded-md shadow-md cursor-pointer pointer-events-auto select-none whitespace-nowrap text-xs md:text-sm font-bold transition-all duration-300 ease-in-out ${(isSineMode && selectedAngle === 'B') || (isCosineMode && (selectedAngle === 'A' || selectedAngle === 'C')) ? 'scale-110 shadow-[0_0_10px_rgba(244,196,48,1)]' : 'opacity-100'}`}
+            style={{ transform: `translate(-50%, -50%) rotate(${animState.posSideB.angle}deg)` }}
+            onClick={() => handleSelect('B')}
+          >
+            AC = {Math.round(animState.dispB * 10) / 10} {dispUnit}
+          </div>
+        </foreignObject>
+        <foreignObject x={animState.posSideC.x} y={animState.posSideC.y} width="1" height="1" className="overflow-visible pointer-events-none">
+          <div
+            className={`absolute bg-blue-900/95 text-white px-2 py-1 rounded-md shadow-md cursor-pointer pointer-events-auto select-none whitespace-nowrap text-xs md:text-sm font-bold transition-all duration-300 ease-in-out ${(isSineMode && selectedAngle === 'C') || (isCosineMode && (selectedAngle === 'A' || selectedAngle === 'B')) ? 'scale-110 shadow-[0_0_10px_rgba(244,196,48,1)]' : 'opacity-100'}`}
+            style={{ transform: `translate(-50%, -50%) rotate(${animState.posSideC.angle}deg)` }}
+            onClick={() => handleSelect('C')}
+          >
+            AB = {Math.round(animState.dispC * 10) / 10} {dispUnit}
           </div>
         </foreignObject>
 

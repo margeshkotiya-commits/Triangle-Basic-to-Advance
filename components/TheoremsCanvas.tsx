@@ -27,13 +27,57 @@ export function TheoremsCanvas({ selectedTheorem, theoremStep }: TheoremsCanvasP
     else if (theoremStep === 2) targetProgress = 0.5;
     else if (theoremStep >= 3) targetProgress = 1;
 
+    // Determine scale bounds depending on theorem
+    let bbox = { w: 400, h: 300, dx: 0, dy: 0 };
+    if (selectedTheorem === "pythagoras") {
+      bbox = { w: 320, h: 350, dx: 0, dy: 0 }; // Triangle + outer squares bounds
+    } else if (selectedTheorem === "sss" || selectedTheorem === "sas") {
+      bbox = { w: 400, h: 200, dx: 0, dy: 0 };
+    } else if (selectedTheorem === "aaa") {
+      bbox = { w: 450, h: 280, dx: 25, dy: 0 };
+    } else if (selectedTheorem === "midpoint") {
+      bbox = { w: 300, h: 250, dx: 0, dy: 0 };
+    } else if (selectedTheorem === "angleBisector") {
+      bbox = { w: 260, h: 250, dx: 0, dy: 0 };
+    }
+
+    let padding = 60; // Desktop ~80%
+    if (typeof window !== 'undefined') {
+      if (window.innerWidth < 640) padding = 105; // Mobile ~65%
+      else if (window.innerWidth < 1024) padding = 75; // Tablet ~75%
+    }
+
+    const safeW = canvas.width - padding * 2;
+    const safeH = canvas.height - padding * 2;
+    const targetScale = Math.max(1.0, Math.min(safeW / bbox.w, safeH / bbox.h));
+
+    // Smooth scale system
+    if (!canvas.dataset.currentScale || canvas.dataset.lastTheorem !== selectedTheorem) {
+      canvas.dataset.currentScale = (targetScale * 0.8).toString();
+      canvas.dataset.lastTheorem = selectedTheorem;
+    }
+
     const render = () => {
-      // Smooth interpolation
+      // Smooth interpolation for progress
       progress += (targetProgress - progress) * 0.1;
+
+      // Smooth interpolation for scale
+      let currentScale = parseFloat(canvas.dataset.currentScale || "1");
+      currentScale += (targetScale - currentScale) * 0.1;
+      canvas.dataset.currentScale = currentScale.toString();
 
       const width = canvas.width;
       const height = canvas.height;
       ctx.clearRect(0, 0, width, height);
+
+      const cx = width / 2;
+      const cy = height / 2;
+
+      ctx.save();
+      // Apply Centering and Scaling
+      ctx.translate(cx, cy);
+      ctx.scale(currentScale, currentScale);
+      ctx.translate(-cx - bbox.dx, -cy - bbox.dy);
 
       // Helper to draw triangle
       const drawTriangle = (pts: {x: number, y: number}[], stroke: string, fill: string, lineWidth = 2) => {
@@ -129,9 +173,6 @@ export function TheoremsCanvas({ selectedTheorem, theoremStep }: TheoremsCanvasP
         ctx.lineWidth = 2;
         ctx.stroke();
       };
-
-      const cx = width / 2;
-      const cy = height / 2;
 
       if (selectedTheorem === "sss") {
         // Two triangles, morphing or highlighting
@@ -478,6 +519,7 @@ export function TheoremsCanvas({ selectedTheorem, theoremStep }: TheoremsCanvasP
         }
       }
 
+      ctx.restore();
       animationFrameId = requestAnimationFrame(render);
     };
 
